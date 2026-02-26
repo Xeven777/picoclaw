@@ -122,9 +122,13 @@
                                     <span class="mr-2">🧠</span> Model Inference
                                 </h3>
                                 <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1">Provider</label>
+                                    <input type="text" x-model="config.agents.defaults.provider" placeholder="e.g. openai" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                </div>
+                                <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1">Default Model Name</label>
                                     <select x-model="config.agents.defaults.model" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-no-repeat bg-[right_1rem_center] bg-[length:1em_1em]" style="background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 fill=%22none%22 viewBox=%220 0 20 20%22%3E%3Cpath stroke=%22%236b7280%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.5%22 d=%22m6 8 4 4 4-4%22%2F%3E%3C%2Fsvg%3E');">
-                                        <template x-for="model in config.model_list" :key="model.model_name">
+                                        <template x-for="model in (config.model_list || [])" :key="model.model_name">
                                             <option :value="model.model_name" x-text="model.model_name" :selected="config.agents.defaults.model === model.model_name"></option>
                                         </template>
                                     </select>
@@ -178,7 +182,7 @@
                         </div>
 
                         <div class="space-y-4">
-                            <template x-for="(model, index) in config.model_list" :key="index">
+                            <template x-for="(model, index) in (config.model_list || [])" :key="index">
                                 <div class="bg-white shadow-sm border border-slate-200 rounded-2xl p-6 group relative transition-all hover:border-indigo-200 hover:shadow-md">
                                     <button @click="removeModel(index)" class="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -231,15 +235,36 @@
                                         <template x-for="(val, key) in channel" :key="key">
                                             <div x-show="key !== 'enabled'">
                                                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1" x-text="key.replace('_', ' ')"></label>
+
                                                 <template x-if="typeof val === 'string'">
                                                     <input :type="key.includes('token') || key.includes('secret') ? 'password' : 'text'" x-model="channel[key]" class="w-full border border-slate-100 bg-slate-50/50 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                                                 </template>
+
                                                 <template x-if="typeof val === 'number'">
                                                     <input type="number" x-model.number="channel[key]" class="w-full border border-slate-100 bg-slate-50/50 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                                                 </template>
-                                                <template x-if="Array.isArray(val)">
-                                                    <input type="text" :value="channel[key].join(', ')" @input="channel[key] = $event.target.value.split(',').map(s => s.trim()).filter(s => s !== '')" class="w-full border border-slate-100 bg-slate-50/50 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+
+                                                <!-- Structured allow_from list -->
+                                                <template x-if="key === 'allow_from' && Array.isArray(val)">
+                                                    <div class="space-y-2">
+                                                        <template x-for="(item, idx) in channel[key]" :key="idx">
+                                                            <div class="flex items-center space-x-2">
+                                                                <input type="text" x-model="channel[key][idx]" class="flex-1 border border-slate-100 bg-slate-50/50 rounded-lg px-3 py-1.5 text-xs focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                                                <button @click="channel[key].splice(idx, 1)" class="text-slate-300 hover:text-rose-500">
+                                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                                </button>
+                                                            </div>
+                                                        </template>
+                                                        <button @click="channel[key].push('')" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center">
+                                                            <span class="mr-1">＋</span> Add Allowed ID
+                                                        </button>
+                                                    </div>
                                                 </template>
+
+                                                <template x-if="key !== 'allow_from' && Array.isArray(val)">
+                                                    <input type="text" :value="(channel[key] || []).join(', ')" @input="channel[key] = $event.target.value.split(',').map(s => s.trim()).filter(s => s !== '')" class="w-full border border-slate-100 bg-slate-50/50 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                                </template>
+
                                                 <template x-if="typeof val === 'boolean'">
                                                     <div class="flex items-center">
                                                         <input type="checkbox" x-model="channel[key]" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
@@ -268,7 +293,7 @@
                                     <span class="mr-3 text-xl text-blue-500">🌐</span> Web Intelligence
                                 </h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <template x-for="(search, name) in config.tools.web" :key="name">
+                                    <template x-for="(search, name) in (config.tools?.web || {})" :key="name">
                                         <div x-show="name !== 'proxy'" class="p-5 border border-slate-100 bg-slate-50 rounded-2xl">
                                             <div class="flex items-center justify-between mb-4">
                                                 <span class="font-bold text-sm text-slate-700 capitalize" x-text="name"></span>
@@ -355,7 +380,7 @@
                                 <h3 class="font-bold text-slate-800 flex items-center mb-6 text-sm uppercase tracking-widest text-slate-400">
                                     Registries
                                 </h3>
-                                <template x-for="(registry, name) in config.tools.skills.registries" :key="name">
+                                <template x-for="(registry, name) in (config.tools?.skills?.registries || {})" :key="name">
                                     <div class="p-6 border border-indigo-50 bg-indigo-50/20 rounded-2xl space-y-4">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center">
@@ -380,6 +405,31 @@
                                                 <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Timeout (s)</label>
                                                 <input type="number" x-model.number="registry.timeout" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                                             </div>
+
+                                            <template x-if="name === 'clawhub'">
+                                                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Search Path</label>
+                                                        <input type="text" x-model="registry.search_path" placeholder="/api/v1/search" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Skills Path</label>
+                                                        <input type="text" x-model="registry.skills_path" placeholder="/api/v1/skills" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Download Path</label>
+                                                        <input type="text" x-model="registry.download_path" placeholder="/api/v1/download" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Max Zip Size (bytes)</label>
+                                                        <input type="number" x-model.number="registry.max_zip_size" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Max Response Size (bytes)</label>
+                                                        <input type="number" x-model.number="registry.max_response_size" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    </div>
+                                                </div>
+                                            </template>
                                         </div>
                                     </div>
                                 </template>
@@ -568,6 +618,11 @@
                         if (!data.heartbeat) data.heartbeat = {};
                         if (!data.session) data.session = {};
 
+                        // Ensure allow_from is an array for all channels
+                        Object.values(data.channels).forEach(c => {
+                            if (!c.allow_from) c.allow_from = [];
+                        });
+
                         this.config = data;
                         this.rawConfig = JSON.stringify(this.config, null, 2);
                         this.customDenyPatternsText = (this.config.tools.exec.custom_deny_patterns || []).join('\n');
@@ -647,6 +702,12 @@
                     try {
                         this.config = JSON.parse(this.rawConfig);
                         this.customDenyPatternsText = (this.config.tools.exec.custom_deny_patterns || []).join('\n');
+
+                        // Ensure allow_from is an array for all channels
+                        Object.values(this.config.channels).forEach(c => {
+                            if (!c.allow_from) c.allow_from = [];
+                        });
+
                         this.showNotification('success', 'Raw JSON applied to forms');
                         this.configUpdated = true;
                     } catch (err) {
